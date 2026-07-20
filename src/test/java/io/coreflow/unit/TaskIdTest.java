@@ -1,6 +1,6 @@
 package io.coreflow.unit;
 
-import io.coreflow.domain.TaskId;
+import io.coreflow.domain.task.TaskId;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
