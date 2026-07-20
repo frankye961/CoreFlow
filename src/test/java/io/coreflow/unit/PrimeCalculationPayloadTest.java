@@ -1,6 +1,7 @@
 package io.coreflow.unit;
 
 import io.coreflow.domain.payloads.PrimeCalculationPayload;
+import io.coreflow.domain.payloads.TaskPayload;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,6 +21,13 @@ public class PrimeCalculationPayloadTest {
         PrimeCalculationPayload payload = new PrimeCalculationPayload(100);
 
         assertThat(payload.upperBoundary()).isEqualTo(100);
+    }
+
+    @Test
+    public void testPrimeCalculationPayloadIsTaskPayload() {
+        PrimeCalculationPayload payload = new PrimeCalculationPayload(2);
+
+        assertThat(payload).isInstanceOf(TaskPayload.class);
     }
 
     @Test
