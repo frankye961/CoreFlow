@@ -11,11 +11,14 @@ public record SuccessResult(TaskId task,
 
     public SuccessResult(TaskId task, String producedValue, OffsetDateTime processedAt, long executionTime) {
 
+        if(task == null) throw new IllegalArgumentException("task must not be null");
+        if(processedAt == null) throw new IllegalArgumentException("processedAt must not be null");
+
         if (producedValue == null) {
             throw new NullPointerException("producedValue is null");
         }
         if (executionTime < 0) {
-            throw new IllegalArgumentException("executionTime must be greater than 0");
+            throw new IllegalArgumentException("executionTime must not be negative");
         }
 
         this.task = task;

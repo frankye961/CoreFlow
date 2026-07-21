@@ -49,6 +49,31 @@ public class SuccessResultTest {
     }
 
     @Test
+    public void testRejectsNullTask() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> new SuccessResult(null, "result", OffsetDateTime.now(), 1));
+
+        assertThat(exception).hasMessage("task must not be null");
+    }
+
+    @Test
+    public void testRejectsNullProcessedAt() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> new SuccessResult(new TaskId(UUID.randomUUID()), "result", null, 1));
+
+        assertThat(exception).hasMessage("processedAt must not be null");
+    }
+
+    @Test
+    public void testAcceptsZeroExecutionTime() {
+        SuccessResult result = new SuccessResult(new TaskId(UUID.randomUUID()), "result", OffsetDateTime.now(), 0);
+
+        assertThat(result.executionTime()).isZero();
+    }
+
+    @Test
     public void testRejectsNegativeExecutionTime() {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
