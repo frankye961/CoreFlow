@@ -1,4 +1,4 @@
-package io.coreflow.domain;
+package io.coreflow.domain.task;
 
 import java.util.Objects;
 import java.util.UUID;

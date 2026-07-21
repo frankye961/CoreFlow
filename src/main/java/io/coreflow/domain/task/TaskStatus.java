@@ -1,4 +1,4 @@
-package io.coreflow.domain;
+package io.coreflow.domain.task;
 
 public enum TaskStatus {
     CREATED,
