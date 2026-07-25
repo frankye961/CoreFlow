@@ -39,6 +39,12 @@ public final class TaskDefinition<T extends TaskPayload> {
                           String idempotencyKey,
                           @NonNull Instant creationTimestamp,
                           Map<String, String> metadata) {
+        if (timeout <= 0) {
+            throw new IllegalArgumentException("timeout must be positive");
+        }
+        if (idempotencyKey != null && idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("idempotencyKey cannot be blank");
+        }
         this.taskId = taskId;
         this.taskPayload = taskPayload;
         this.taskPriority = taskPriority;
@@ -50,6 +56,18 @@ public final class TaskDefinition<T extends TaskPayload> {
         this.retryPolicy = retryPolicy;
         this.idempotencyKey = idempotencyKey;
         this.creationTimestamp = creationTimestamp;
-        this.metadata = metadata == null ? Map.of() : Map.copyOf(metadata);
+        this.metadata = copyMetadata(metadata);
+    }
+
+    private static Map<String, String> copyMetadata(Map<String, String> metadata) {
+        if (metadata == null) {
+            return Map.of();
+        }
+        metadata.forEach((key, value) -> {
+            if (key == null || value == null) {
+                throw new IllegalArgumentException("metadata cannot contain null keys or values");
+            }
+        });
+        return Map.copyOf(metadata);
     }
 }

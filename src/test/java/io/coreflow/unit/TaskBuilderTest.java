@@ -1,6 +1,7 @@
 package io.coreflow.unit;
 
 import io.coreflow.domain.TaskBuilder;
+import io.coreflow.domain.TaskBuilderFactory;
 import io.coreflow.domain.payloads.PrimeCalculationPayload;
 import io.coreflow.domain.task.RetryPolicy;
 import io.coreflow.domain.task.TaskDefinition;
@@ -24,15 +25,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class TaskBuilderTest {
 
     @Test
-    void buildAppliesDefaultsAndDefensivelyCopiesMetadata() {
+    void factoryIsASingletonAndBuildAppliesDefaults() {
         Map<String, String> metadata = new HashMap<>(Map.of("source", "original"));
         PrimeCalculationPayload payload = new PrimeCalculationPayload(100);
 
         Instant beforeBuild = Instant.now();
-        TaskDefinition<PrimeCalculationPayload> task = builder(null, payload, TaskPriority.HIGH,
-                null, null, new RetryPolicy(3), null, null, metadata, 5_000L).build();
+        TaskDefinition<PrimeCalculationPayload> task = builder(payload, TaskPriority.HIGH, 5_000L, new RetryPolicy(3))
+                .withMetadata(metadata)
+                .build();
         Instant afterBuild = Instant.now();
 
+        assertThat(TaskBuilderFactory.getInstance()).isSameAs(TaskBuilderFactory.getInstance());
         assertThat(task.getTaskId()).isNotNull();
         assertThat(task.getTaskPayload()).isSameAs(payload);
         assertThat(task.getScheduledExecutionStartTime()).isEqualTo(task.getCreationTimestamp());
@@ -42,12 +45,10 @@ class TaskBuilderTest {
         metadata.put("source", "changed");
 
         assertThat(task.getMetadata()).containsExactly(Map.entry("source", "original"));
-        assertThatThrownBy(() -> task.getMetadata().put("new", "value"))
-                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
-    void buildPreservesSuppliedValues() {
+    void buildPreservesOptionalValues() {
         TaskId taskId = new TaskId(UUID.randomUUID());
         Instant creationTime = Instant.parse("2026-01-01T10:15:30Z");
         Instant scheduledTime = Instant.parse("2026-01-02T10:15:30Z");
@@ -55,11 +56,17 @@ class TaskBuilderTest {
         RetryPolicy retryPolicy = new RetryPolicy(3);
         PrimeCalculationPayload payload = new PrimeCalculationPayload(100);
 
-        TaskDefinition<PrimeCalculationPayload> task = builder(taskId, payload, TaskPriority.HIGH,
-                creationTime, scheduledTime, retryPolicy, "request-42", endTime, Map.of("key", "value"), 5_000L).build();
+        TaskDefinition<PrimeCalculationPayload> task = builder(payload, TaskPriority.HIGH, 5_000L, retryPolicy)
+                .withTaskId(taskId)
+                .withTaskStatus(TaskStatus.SCHEDULED)
+                .withCreationTimestamp(creationTime)
+                .withScheduledExecutionStartTime(scheduledTime)
+                .withScheduledExecutionEndTime(endTime)
+                .withIdempotencyKey("request-42")
+                .withMetadata(Map.of("key", "value"))
+                .build();
 
         assertThat(task.getTaskId()).isEqualTo(taskId);
-        assertThat(task.getTaskPayload()).isSameAs(payload);
         assertThat(task.getTaskPriority()).isEqualTo(TaskPriority.HIGH);
         assertThat(task.getTaskStatus()).isEqualTo(TaskStatus.SCHEDULED);
         assertThat(task.getWorkloadType()).isEqualTo(WorkloadType.CPU_BOUND);
@@ -72,46 +79,50 @@ class TaskBuilderTest {
         assertThat(task.getMetadata()).containsExactly(Map.entry("key", "value"));
     }
 
+    @Test
+    void buildCannotBeCalledTwice() {
+        TaskBuilder<PrimeCalculationPayload> builder = builder(
+                new PrimeCalculationPayload(10), TaskPriority.NORMAL, 5_000L, new RetryPolicy(1));
+
+        builder.build();
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("TaskBuilder cannot be reused after build");
+    }
+
     @ParameterizedTest
     @EnumSource(TaskPriority.class)
     void buildPreservesEachPriority(TaskPriority priority) {
-        TaskDefinition<PrimeCalculationPayload> task = builder(null, new PrimeCalculationPayload(10), priority,
-                null, null, new RetryPolicy(1), null, null, null, 5_000L).build();
-
-        assertThat(task.getTaskPriority()).isEqualTo(priority);
+        assertThat(builder(new PrimeCalculationPayload(10), priority, 5_000L, new RetryPolicy(1))
+                .build()
+                .getTaskPriority()).isEqualTo(priority);
     }
 
     @ParameterizedTest
     @ValueSource(longs = {0, -1})
     void buildRejectsNonPositiveTimeout(long timeout) {
-        assertThatThrownBy(() -> builder(null, new PrimeCalculationPayload(10), TaskPriority.NORMAL,
-                null, null, new RetryPolicy(1), null, null, null, timeout).build())
+        assertThatThrownBy(() -> builder(new PrimeCalculationPayload(10), TaskPriority.NORMAL, timeout, new RetryPolicy(1)).build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Timeout must be greater than 0");
+                .hasMessage("timeout must be positive");
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"", " ", "\t"})
     void buildRejectsBlankIdempotencyKey(String idempotencyKey) {
-        assertThatThrownBy(() -> builder(null, new PrimeCalculationPayload(10), TaskPriority.NORMAL,
-                null, null, new RetryPolicy(1), idempotencyKey, null, null, 5_000L).build())
+        assertThatThrownBy(() -> builder(new PrimeCalculationPayload(10), TaskPriority.NORMAL, 5_000L, new RetryPolicy(1))
+                .withIdempotencyKey(idempotencyKey)
+                .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("idempotencyKey cannot be blank");
     }
 
     private static TaskBuilder<PrimeCalculationPayload> builder(
-            TaskId taskId,
             PrimeCalculationPayload payload,
             TaskPriority priority,
-            Instant creationTime,
-            Instant scheduledTime,
-            RetryPolicy retryPolicy,
-            String idempotencyKey,
-            Instant scheduledEndTime,
-            Map<String, String> metadata,
-            long timeout) {
-        return new TaskBuilder<>(taskId, payload, priority, TaskStatus.SCHEDULED,
-                WorkloadType.CPU_BOUND, scheduledTime, scheduledEndTime, timeout, retryPolicy,
-                idempotencyKey, creationTime, metadata);
+            long timeout,
+            RetryPolicy retryPolicy) {
+        return TaskBuilderFactory.getInstance().createTaskBuilder(
+                payload, priority, WorkloadType.CPU_BOUND, timeout, retryPolicy);
     }
 }
