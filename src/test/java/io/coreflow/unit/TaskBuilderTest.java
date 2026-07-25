@@ -50,6 +50,17 @@ class TaskBuilderTest {
     }
 
     @Test
+    void buildDefaultsMetadataToAnEmptyImmutableMap() {
+        TaskDefinition<PrimeCalculationPayload> task = builder(
+                new PrimeCalculationPayload(10), TaskPriority.NORMAL, 5_000L, new RetryPolicy(1))
+                .build();
+
+        assertThat(task.getMetadata()).isEmpty();
+        assertThatThrownBy(() -> task.getMetadata().put("key", "value"))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
     void buildPreservesOptionalValues() {
         TaskId taskId = new TaskId(UUID.randomUUID());
         Instant creationTime = Instant.parse("2026-01-01T10:15:30Z");
@@ -93,6 +104,82 @@ class TaskBuilderTest {
                 .hasMessage("TaskBuilder cannot be reused after build");
     }
 
+    @Test
+    void buildRejectsNullPayload() {
+        assertThatThrownBy(() -> builder(null, TaskPriority.NORMAL, 5_000L, new RetryPolicy(1)).build())
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("payload is null");
+    }
+
+    @Test
+    void buildRejectsNullPriority() {
+        assertThatThrownBy(() -> builder(new PrimeCalculationPayload(10), null, 5_000L, new RetryPolicy(1)).build())
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("priority is null");
+    }
+
+    @Test
+    void buildRejectsNullWorkloadType() {
+        assertThatThrownBy(() -> TaskBuilderFactory.getInstance().createTaskBuilder(
+                new PrimeCalculationPayload(10), TaskPriority.NORMAL, null, 5_000L, new RetryPolicy(1)).build())
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("workloadType is null");
+    }
+
+    @Test
+    void buildRejectsNullTimeout() {
+        assertThatThrownBy(() -> builder(new PrimeCalculationPayload(10), TaskPriority.NORMAL, null, new RetryPolicy(1)).build())
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("timeout is null");
+    }
+
+    @Test
+    void buildRejectsNullRetryPolicy() {
+        assertThatThrownBy(() -> builder(new PrimeCalculationPayload(10), TaskPriority.NORMAL, 5_000L, null).build())
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("retryPolicy is null");
+    }
+
+    @Test
+    void builderRejectsNullCreationTimestamp() {
+        assertThatThrownBy(() -> builder(new PrimeCalculationPayload(10), TaskPriority.NORMAL, 5_000L, new RetryPolicy(1))
+                .withCreationTimestamp(null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("creationTimestamp is null");
+    }
+
+    @Test
+    void builderRejectsNullScheduledExecutionStartTime() {
+        assertThatThrownBy(() -> builder(new PrimeCalculationPayload(10), TaskPriority.NORMAL, 5_000L, new RetryPolicy(1))
+                .withScheduledExecutionStartTime(null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("scheduledExecutionStartTime is null");
+    }
+
+    @Test
+    void buildRejectsNullMetadataKey() {
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put(null, "value");
+
+        assertThatThrownBy(() -> builder(new PrimeCalculationPayload(10), TaskPriority.NORMAL, 5_000L, new RetryPolicy(1))
+                .withMetadata(metadata)
+                .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("metadata cannot contain null keys or values");
+    }
+
+    @Test
+    void buildRejectsNullMetadataValue() {
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("key", null);
+
+        assertThatThrownBy(() -> builder(new PrimeCalculationPayload(10), TaskPriority.NORMAL, 5_000L, new RetryPolicy(1))
+                .withMetadata(metadata)
+                .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("metadata cannot contain null keys or values");
+    }
+
     @ParameterizedTest
     @EnumSource(TaskPriority.class)
     void buildPreservesEachPriority(TaskPriority priority) {
@@ -122,7 +209,7 @@ class TaskBuilderTest {
     private static TaskBuilder<PrimeCalculationPayload> builder(
             PrimeCalculationPayload payload,
             TaskPriority priority,
-            long timeout,
+            Long timeout,
             RetryPolicy retryPolicy) {
         return TaskBuilderFactory.getInstance().createTaskBuilder(
                 payload, priority, WorkloadType.CPU_BOUND, timeout, retryPolicy);

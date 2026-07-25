@@ -20,7 +20,7 @@ public final class TaskBuilderFactory {
             T payload,
             TaskPriority priority,
             WorkloadType workloadType,
-            long timeout,
+            Long timeout,
             RetryPolicy retryPolicy) {
         return new TaskBuilder<>(payload, priority, workloadType, timeout, retryPolicy);
     }

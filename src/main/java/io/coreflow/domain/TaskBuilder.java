@@ -22,14 +22,14 @@ public final class TaskBuilder<T extends TaskPayload> {
     private final WorkloadType workloadType;
     private Instant scheduledExecutionStartTime;
     private Instant scheduledExecutionEndTime;
-    private final long timeout;
+    private final Long timeout;
     private final RetryPolicy retryPolicy;
     private String idempotencyKey;
     private Instant creationTimestamp;
     private Map<String, String> metadata;
     private boolean built;
 
-    TaskBuilder(T payload, TaskPriority priority, WorkloadType workloadType, long timeout, RetryPolicy retryPolicy) {
+    TaskBuilder(T payload, TaskPriority priority, WorkloadType workloadType, Long timeout, RetryPolicy retryPolicy) {
         this.payload = payload;
         this.priority = priority;
         this.workloadType = workloadType;
@@ -48,7 +48,8 @@ public final class TaskBuilder<T extends TaskPayload> {
     }
 
     public TaskBuilder<T> withScheduledExecutionStartTime(Instant scheduledExecutionStartTime) {
-        this.scheduledExecutionStartTime = scheduledExecutionStartTime;
+        this.scheduledExecutionStartTime = Objects.requireNonNull(
+                scheduledExecutionStartTime, "scheduledExecutionStartTime is null");
         return this;
     }
 
@@ -63,7 +64,7 @@ public final class TaskBuilder<T extends TaskPayload> {
     }
 
     public TaskBuilder<T> withCreationTimestamp(Instant creationTimestamp) {
-        this.creationTimestamp = creationTimestamp;
+        this.creationTimestamp = Objects.requireNonNull(creationTimestamp, "creationTimestamp is null");
         return this;
     }
 
@@ -104,6 +105,9 @@ public final class TaskBuilder<T extends TaskPayload> {
         Objects.requireNonNull(priority, "priority is null");
         Objects.requireNonNull(workloadType, "workloadType is null");
         Objects.requireNonNull(retryPolicy, "retryPolicy is null");
+        if (timeout == null) {
+            throw new NullPointerException("timeout is null");
+        }
         if (timeout <= 0) {
             throw new IllegalArgumentException("timeout must be positive");
         }
