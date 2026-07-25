@@ -45,6 +45,8 @@ class TaskBuilderTest {
         metadata.put("source", "changed");
 
         assertThat(task.getMetadata()).containsExactly(Map.entry("source", "original"));
+        assertThatThrownBy(() -> task.getMetadata().put("new", "value"))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
