@@ -6,6 +6,7 @@ import io.coreflow.domain.task.TaskId;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,10 +23,24 @@ public class FailureResultTest {
         FailureResult result = new FailureResult(taskId, error, 1, true, failedAt);
 
         assertThat(result.taskId()).isEqualTo(taskId);
-        assertThat(result.error()).isEqualTo(error);
+        assertThat(result.error().type()).isEqualTo(IllegalStateException.class.getName());
+        assertThat(result.error().message()).isEqualTo("failure");
         assertThat(result.attempt()).isEqualTo(1);
         assertThat(result.retryable()).isTrue();
         assertThat(result.failedAt()).isEqualTo(failedAt);
+    }
+
+    @Test
+    public void testFailureResultCapturesAnImmutableErrorSnapshot() {
+        Throwable error = new IllegalStateException("failure");
+        List<StackTraceElement> originalStackTrace = List.of(error.getStackTrace());
+        FailureResult result = new FailureResult(new TaskId(UUID.randomUUID()), error, 1, true, Instant.now());
+
+        error.setStackTrace(new StackTraceElement[0]);
+
+        assertThat(result.error().stackTrace()).isEqualTo(originalStackTrace);
+        assertThrows(UnsupportedOperationException.class,
+                () -> result.error().stackTrace().add(new StackTraceElement("Type", "method", "File", 1)));
     }
 
     @Test

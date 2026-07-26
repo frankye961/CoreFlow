@@ -1,16 +1,25 @@
 # CoreFlow
 
-CoreFlow is a framework-free Java 21 skeleton for a concurrent task-processing engine. It is intended for deliberate practice with Java core APIs, object-oriented design, generics, records, sealed types, design patterns, concurrency, the Java Memory Model, platform threads, virtual threads, scheduling, backpressure, cancellation, retries, file persistence, JVM profiling, allocation analysis, and garbage-collector comparison.
+CoreFlow is a Java 21 skeleton for a concurrent task-processing engine. It is intended for deliberate practice with Java core APIs, object-oriented design, generics, records, sealed types, design patterns, concurrency, the Java Memory Model, platform threads, virtual threads, scheduling, backpressure, cancellation, retries, file persistence, JVM profiling, allocation analysis, and garbage-collector comparison.
 
-This repository currently contains architectural scaffolding and implementation guidance only. Methods intentionally throw UnsupportedOperationException or contain TODO documentation.
+This repository contains an implemented domain model and architectural guidance. Runtime engine components remain intentionally unimplemented.
+
+## Domain Model
+
+- **Task ID:** `TaskId` is a dedicated value object that wraps a UUID. It prevents APIs from accepting unrelated identifiers, such as user or job IDs, and centralizes task-ID generation and validation.
+- **Payloads and results:** `TaskPayload` and `Hierarchy` are separate sealed interfaces. Their permitted implementations keep the domain model intentionally bounded.
+- **Task definition:** `TaskDefinition<T>` preserves the concrete payload type and is immutable, so completed definitions can be safely shared between threads.
+- **Metadata:** Task definitions take an immutable defensive copy of metadata. This prevents later mutations of the caller's map and prevents mutation through the metadata accessor.
+- **Retry policy:** Maximum attempts bounds retries and repeated work.
+- **Scope:** The domain layer defines task data, validation, and rules. It does not execute tasks, manage threads, or perform persistence.
 
 ## Current Status
 
-No engine functionality has been implemented. The code is organized so it compiles as a single-module Maven project while leaving concrete constructors, factories, lifecycle methods, helpers, tests, benchmarks, and concurrency experiments unimplemented.
+The domain model, validation, builders, and unit tests are implemented. Runtime engine components, including submission, scheduling, execution, persistence, and concurrency experiments, remain planned work.
 
 ## Learning Objectives
 
-- Build a Java 21 core application without Spring, Jakarta EE, Lombok, databases, logging frameworks, or utility frameworks.
+- Build a Java 21 core application without Spring, Jakarta EE, databases, logging frameworks, or utility frameworks.
 - Explore platform-thread and virtual-thread execution models.
 - Practise safe publication, happens-before reasoning, atomic state transitions, cancellation, retry policies, and backpressure.
 - Compare JVM behavior through JFR, heap dumps, allocation measurements, and GC logs.
